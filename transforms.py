@@ -46,7 +46,7 @@ class Rescale(object):
         
         image = transform.resize(image, new_size, preserve_range=True, mode='constant', cval=255)
         if self.rotation != 0:
-            rot = np.random.choice(np.arange(-self.rotation, self.rotation), 1)
+            rot = np.random.choice(np.arange(-self.rotation, self.rotation), 1)[0]
             image = transform.rotate(image, rot, mode='constant', cval=255, preserve_range=True)
         
         canvas = np.ones(self.output_size, dtype=np.uint8) * 255
@@ -55,8 +55,8 @@ class Rescale(object):
             v_pad_max = self.output_size[0] - new_size[0] 
             h_pad_max = self.output_size[1] - new_size[1]
             
-            v_pad = int(np.random.choice(np.arange(0, v_pad_max + 1), 1))
-            h_pad = int(np.random.choice(np.arange(0, h_pad_max + 1), 1))
+            v_pad = int(np.random.choice(np.arange(0, v_pad_max + 1), 1)[0])
+            h_pad = int(np.random.choice(np.arange(0, h_pad_max + 1), 1)[0])
             
             canvas[v_pad:v_pad + new_size[0], h_pad:h_pad + new_size[1]] = image            
         else:
@@ -91,7 +91,7 @@ class Deslant(object):
             shift_x = np.max([-a*binary.shape[0], 0])
             M = np.array([[1, a, shift_x],
                           [0,1,0]], dtype=np.float64)
-            img_size = (np.int(binary.shape[1] + np.ceil(np.abs(a*binary.shape[0]))), binary.shape[0])
+            img_size = (np.int_(binary.shape[1] + np.ceil(np.abs(a*binary.shape[0]))), binary.shape[0])
             alpha_params.append((M, img_size))
             
             
@@ -126,7 +126,7 @@ class toRGB(object):
        
     def __call__(self, sample):
         image, word = sample['image'], sample['word']
-        image = color.grey2rgb(image)
+        image = color.gray2rgb(image)
         
         return {'image': image, 'word': word}
         

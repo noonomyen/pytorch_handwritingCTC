@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import os
 import pickle
 import Levenshtein as leven
-from skimage.color import rgb2grey
+from skimage.color import rgb2gray
 from skimage.transform import rotate
 from skimage import io
 import matplotlib.pyplot as plt
@@ -269,7 +269,7 @@ class Learner(object):
                 pred = ''.join([self.decode_map.get(letter) for letter in outs[i]])
                 if show_img:
                     img = xb[i, :, :, :].permute(1,2,0).cpu().numpy()
-                    img = rgb2grey(img)
+                    img = rgb2gray(img)
                     img = rotate(img, angle=90, clip=False, resize=True)
                     f, ax = plt.subplots(1,1)
                     ax.imshow(img, cmap='gray')
@@ -287,11 +287,11 @@ class Learner(object):
         Useful for quickly checking output. Valid_dl by default.
         """
         if dataloader == 'train' or dataloader == 'both':
-            xb, yb, lens = iter(self.train_dl).next()
+            xb, yb, lens = next(iter(self.train_dl))
             self._batch_predict(xb, yb, lens, 'train', show_img, up_to)
 
         if dataloader == 'valid' or dataloader == 'both':
-            xb, yb, lens = iter(self.valid_dl).next()
+            xb, yb, lens = next(iter(self.valid_dl))
             self._batch_predict(xb, yb, lens, 'valid', show_img, up_to)
             
         

@@ -127,7 +127,7 @@ class CTCModel(nn.Module):
             softmax_out = out.softmax(2).argmax(2).permute(1, 0).cpu().numpy()
             char_list = []
             for i in range(0, softmax_out.shape[0]):
-                dup_rm = softmax_out[i, :][np.insert(np.diff(softmax_out[i, :]).astype(np.bool), 0, True)]
+                dup_rm = softmax_out[i, :][np.insert(np.diff(softmax_out[i, :]).astype(np.bool_), 0, True)]
                 dup_rm = dup_rm[dup_rm != 0]
                 char_list.append(dup_rm.astype(int))
                 
