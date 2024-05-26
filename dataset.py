@@ -10,13 +10,14 @@ class CTCData(Dataset):
     """Handwriting dataset Class."""
 
     def __init__(self, csv_file, root_dir, transform=None, get_char=True, char_dict=None,
-                 word_col=-1):
+                 word_col=-1, in_memory=False):
         """
         Args:
             csv_file (string): Path to the csv file with annotations.
             root_dir (string): Directory with all the images.
             transform (callable, optional): Optional transform to be applied
                 on a sample.
+            im_memory (bool): Load all images in memory
         """
         assert isinstance(word_col, (int, str))
         self.word_df = pd.read_csv(os.path.join(root_dir, csv_file))
@@ -33,23 +34,27 @@ class CTCData(Dataset):
         self.transform = transform
         self.word_col = word_col
         self.max_len = self.word_df.iloc[:, word_col].apply(lambda x: len(x)).max() 
+        
+        self.in_memory = in_memory
+        self.cache = [None] * len(self.word_df)
+
+        if self.in_memory:
+            for idx, img_name in zip(self.word_df.index, self.word_df.iloc[:, 0]):
+                self.cache[idx] = io.imread(os.path.join(self.root_dir, self.get_folder(img_name), img_name))
 
     def __len__(self):
         return len(self.word_df)
 
     def __getitem__(self, idx):
-        
         img_name = self.word_df.iloc[idx, 0]
-        folder_name = self.get_folder(img_name)
-        img_filepath = os.path.join(self.root_dir,
-                                   folder_name,
-                                   img_name)
-        try:
+        
+        if self.in_memory:
+            image = self.cache[idx]
+        else:
+            folder_name = self.get_folder(img_name)
+            img_filepath = os.path.join(self.root_dir, folder_name, img_name)
             image = io.imread(img_filepath)
-            
-        except OSError:
-            image = np.random.randint(0, 255, size=(50, 100), dtype=np.uint8)
-            
+        
         if type(self.word_col) == int:
             word = self.word_df.iloc[idx, self.word_col]
         else:
@@ -57,10 +62,7 @@ class CTCData(Dataset):
             
         sample = {'image': image, 'word': word}
 
-        if self.transform:
-            sample = self.transform(sample)
-
-        return sample
+        return self.transform(sample) if self.transform else sample
     
     def get_folder(self, im_nm):
         
