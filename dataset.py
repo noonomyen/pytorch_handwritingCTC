@@ -1,7 +1,9 @@
 # HandwritingDataset
 # Datset class
+from typing import Optional
 import pandas as pd
-import numpy as np
+# import numpy as np
+from io import BytesIO
 from skimage import io
 import os
 from torch.utils.data import Dataset
@@ -10,7 +12,7 @@ class CTCData(Dataset):
     """Handwriting dataset Class."""
 
     def __init__(self, csv_file, root_dir, transform=None, get_char=True, char_dict=None,
-                 word_col=-1, in_memory=False):
+                 parquet=False, in_memory_image_pretransform=None, in_memory=False, col_map: Optional[dict[str, str]] = None):
         """
         Args:
             csv_file (string): Path to the csv file with annotations.
@@ -19,12 +21,19 @@ class CTCData(Dataset):
                 on a sample.
             im_memory (bool): Load all images in memory
         """
-        assert isinstance(word_col, (int, str))
-        self.word_df = pd.read_csv(os.path.join(root_dir, csv_file))
+        self.from_parquet = parquet
         
+        if self.from_parquet:
+            self.word_df = pd.read_parquet(os.path.join(root_dir, csv_file))
+        else:
+            self.word_df = pd.read_csv(os.path.join(root_dir, csv_file))
+
+        if col_map:
+            self.word_df.rename(columns=col_map, inplace=True)
+
         if get_char and char_dict is None:
             chars = []
-            self.word_df.iloc[:, word_col].apply(lambda x: chars.extend(list(x)))
+            self.word_df.loc[:, "word"].apply(lambda x: chars.extend(list(x)))
             chars = sorted(list(set(chars)))
             self.char_dict = {c:i for i, c in enumerate(chars, 1)}
         else:
@@ -32,15 +41,20 @@ class CTCData(Dataset):
             
         self.root_dir = root_dir
         self.transform = transform
-        self.word_col = word_col
-        self.max_len = self.word_df.iloc[:, word_col].apply(lambda x: len(x)).max() 
+        self.max_len = self.word_df.loc[:, "word"].apply(lambda x: len(x)).max() 
         
         self.in_memory = in_memory
         self.cache = [None] * len(self.word_df)
 
         if self.in_memory:
-            for idx, img_name in zip(self.word_df.index, self.word_df.iloc[:, 0]):
-                self.cache[idx] = io.imread(os.path.join(self.root_dir, self.get_folder(img_name), img_name))
+            if self.from_parquet:
+                for idx, bytes_ in zip(self.word_df.index, self.word_df.loc[:, "image"]):
+                    img = io.imread(BytesIO(bytes_["bytes"]))
+                    self.cache[idx] = in_memory_image_pretransform({ "image": img, "word": None })["image"] if in_memory_image_pretransform else img
+            else:
+                for idx, img_name in zip(self.word_df.index, self.word_df.loc[:, "file"]):
+                    img = io.imread(os.path.join(self.root_dir, self.get_folder(img_name), img_name))
+                    self.cache[idx] = in_memory_image_pretransform({ "image": img, "word": None })["image"] if in_memory_image_pretransform else img
 
     def __len__(self):
         return len(self.word_df)
@@ -55,10 +69,8 @@ class CTCData(Dataset):
             img_filepath = os.path.join(self.root_dir, folder_name, img_name)
             image = io.imread(img_filepath)
         
-        if type(self.word_col) == int:
-            word = self.word_df.iloc[idx, self.word_col]
-        else:
-            word = self.word_df[self.word_col].iloc[idx]
+        # word = self.word_df.iloc[idx, self.word_col]
+        word = self.word_df["word"].iloc[idx]
             
         sample = {'image': image, 'word': word}
 
