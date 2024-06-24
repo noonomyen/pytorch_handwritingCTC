@@ -70,6 +70,7 @@ class CTCData(Dataset):
                     if col_map:
                         self.word_df.rename(columns=col_map, inplace=True)
 
+                    print(f"0.0000%", end="\r")
                     for idx, bytes_ in zip(self.word_df.index, self.word_df.loc[:, "image"]):
                         img = io.imread(BytesIO(bytes_["bytes"]))
                         self.cache_image[idx]
@@ -80,6 +81,8 @@ class CTCData(Dataset):
                         else:
                             self.cache_image[idx] = img
                             self.cache_word[idx] = self.word_df["word"].iloc[idx]
+                        print(f"{(((idx+1)/self.size)*100):.4f}%", end="\r")
+                    print()
             elif not self.in_memory_serialized_cache or (self.in_memory_serialized_cache and req_cache_dump):
                 self.word_df = pd.read_csv(os.path.join(root_dir, csv_file))
                 self.size = len(self.word_df)
@@ -88,6 +91,7 @@ class CTCData(Dataset):
                 if col_map:
                     self.word_df.rename(columns=col_map, inplace=True)
 
+                print(f"0.0000%", end="\r")
                 for idx, img_name in zip(self.word_df.index, self.word_df.loc[:, "file"]):
                     img = io.imread(os.path.join(self.root_dir, self.get_folder(img_name), img_name))
                     if in_memory_pretransform:
@@ -97,6 +101,8 @@ class CTCData(Dataset):
                     else:
                         self.cache_image[idx] = img
                         self.cache_word[idx] = self.word_df["word"].iloc[idx]
+                    print(f"{(((idx+1)/self.size)*100):.4f}%", end="\r")
+                print()
 
             if req_cache_dump:
                 get_char_dict()
