@@ -26,31 +26,20 @@ class CTCData(Dataset):
         """
         self.from_parquet = parquet
         self.in_memory_serialized_cache = in_memory_serialized_cache
-        
-        if self.from_parquet:
-            self.word_df = pd.read_parquet(os.path.join(root_dir, csv_file))
-        else:
-            self.word_df = pd.read_csv(os.path.join(root_dir, csv_file))
 
-        if col_map:
-            self.word_df.rename(columns=col_map, inplace=True)
-
-        if get_char and char_dict is None:
-            chars = []
-            self.word_df.loc[:, "word"].apply(lambda x: chars.extend(list(x)))
-            chars = sorted(list(set(chars)))
-            self.char_dict = {c:i for i, c in enumerate(chars, 1)}
-        else:
-            self.char_dict = char_dict
-            
         self.root_dir = root_dir
         self.transform = transform
-        self.max_len = self.word_df.loc[:, "word"].apply(lambda x: len(x)).max() 
         
         self.in_memory = in_memory
-        self.size = len(self.word_df)
-        self.cache_image = [None] * self.size
-        self.cache_word = [None] * self.size
+    
+        def get_char_dict():
+            self.max_len = -1
+            chars = set()
+            for w in self.word_df.loc[:, "word"]:
+                for c in w: chars.add(c)
+                self.max_len = max(self.max_len, len(w))
+            self.char_dict = {c:i for i, c in enumerate(sorted(list(chars)), 1)}
+            print(f"get char dict max_len:{self.max_len} + char_dict:{len(self.char_dict)}")
 
         if self.in_memory:
             req_cache_dump = False
@@ -60,17 +49,27 @@ class CTCData(Dataset):
                 with open(os.path.join(root_dir, csv_file), "rb") as f:
                     h = hash_md5()
                     h.update(f.read())
-                    fn = csv_file + h.hexdigest() + "-serialized.bin"
+                    fn = csv_file + "-" + h.hexdigest() + "-serialized.bin"
 
                 fn_path = os.path.join(root_dir, fn)
 
                 if os.path.isfile(fn_path):
-                    self.cache_image, self.cache_word = pickle.load(open(fn_path, "rb"))
+                    print(f"found in-memory serialized cache file : {fn_path}")
+                    print("load serialized python objects to memory")
+                    self.cache_image, self.cache_word, self.size, self.char_dict, self.max_len = pickle.load(open(fn_path, "rb"))
                 else:
+                    print(f"not found in-memory serialized cache file : {fn_path}")
                     req_cache_dump = True
 
             if self.from_parquet:
                 if not self.in_memory_serialized_cache or (self.in_memory_serialized_cache and req_cache_dump):
+                    self.word_df = pd.read_parquet(os.path.join(root_dir, csv_file))
+                    self.size = len(self.word_df)
+                    self.cache_image = [None] * self.size
+                    self.cache_word = [None] * self.size
+                    if col_map:
+                        self.word_df.rename(columns=col_map, inplace=True)
+
                     for idx, bytes_ in zip(self.word_df.index, self.word_df.loc[:, "image"]):
                         img = io.imread(BytesIO(bytes_["bytes"]))
                         self.cache_image[idx]
@@ -82,10 +81,17 @@ class CTCData(Dataset):
                             self.cache_image[idx] = img
                             self.cache_word[idx] = self.word_df["word"].iloc[idx]
             elif not self.in_memory_serialized_cache or (self.in_memory_serialized_cache and req_cache_dump):
+                self.word_df = pd.read_csv(os.path.join(root_dir, csv_file))
+                self.size = len(self.word_df)
+                self.cache_image = [None] * self.size
+                self.cache_word = [None] * self.size
+                if col_map:
+                    self.word_df.rename(columns=col_map, inplace=True)
+
                 for idx, img_name in zip(self.word_df.index, self.word_df.loc[:, "file"]):
                     img = io.imread(os.path.join(self.root_dir, self.get_folder(img_name), img_name))
                     if in_memory_pretransform:
-                        tmp = in_memory_pretransform({ "image": img, "word": self.word["word"].iloc[idx] })
+                        tmp = in_memory_pretransform({ "image": img, "word": self.word_df["word"].iloc[idx] })
                         self.cache_image[idx] = tmp["image"]
                         self.cache_word[idx] = tmp["word"]
                     else:
@@ -93,17 +99,49 @@ class CTCData(Dataset):
                         self.cache_word[idx] = self.word_df["word"].iloc[idx]
 
             if req_cache_dump:
-                pickle.dump((self.cache_image, self.cache_word), open(fn_path, "wb"), pickle.HIGHEST_PROTOCOL)
+                get_char_dict()
+                print("dump in-memory cache to serialized python objects")
+                pickle.dump((self.cache_image, self.cache_word, self.size, self.char_dict, self.max_len), open(fn_path, "wb"), pickle.HIGHEST_PROTOCOL)
+
+            if get_char and char_dict is None:
+                get_char_dict()
+            else:
+                self.char_dict = char_dict
+            
+            if not hasattr(self, "max_len") and hasattr(self, "word_df"):
+                self.max_len = -1
+                for w in self.word_df.loc[:, "word"]:
+                    self.max_len = max(self.max_len, len(w))
+                print(f"char max_len : {self.max_len}")
+
+            if hasattr(self, "word_df"):
+                del self.word_df
+
+        else:
+            if self.from_parquet:
+                self.word_df = pd.read_parquet(os.path.join(root_dir, csv_file))
+            else:
+                self.word_df = pd.read_csv(os.path.join(root_dir, csv_file))
+
+            if col_map:
+                self.word_df.rename(columns=col_map, inplace=True)
+
+            self.size = len(self.word_df)
+
+            if get_char and char_dict is None:
+                get_char_dict()
+            else:
+                self.char_dict = char_dict
 
     def __len__(self):
-        return len(self.word_df)
+        return self.size
 
     def __getitem__(self, idx):
         if self.in_memory:
             image = self.cache_image[idx]
             word = self.cache_word[idx]
         elif self.from_parquet:
-            image = io.imread(BytesIO(self.word_df["image"].iloc[idx]))
+            image = io.imread(BytesIO(self.word_df["image"].iloc[idx]["bytes"]))
             word = self.word_df["word"].iloc[idx]
         else:
             img_name = self.word_df["file"].iloc[idx]
