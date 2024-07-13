@@ -65,7 +65,7 @@ class IAM_CSVDataSource(DataSource):
             )
 
     def __len__(self) -> int:
-        return self.data_frame.size
+        return self.data_frame.__len__()
 
     def image(self, index: int) -> SampleImage:
         return io.imread(self.get_image_relative_path(self.data_frame.iloc[index].iloc[0]))
@@ -123,7 +123,7 @@ class ParquetDataSource(DataSource):
             )
 
     def __len__(self) -> int:
-        return self.data_frame.size
+        return self.data_frame.__len__()
 
     def image(self, index: int) -> SampleImage:
         return io.imread(BytesIO(self.data_frame.iloc[index].iloc[0]["bytes"]))
