@@ -68,10 +68,10 @@ class IAM_CSVDataSource(DataSource):
         return self.data_frame.size
 
     def image(self, index: int) -> SampleImage:
-        return io.imread(self.get_image_relative_path(self.data_frame.iloc[index][0]))
+        return io.imread(self.get_image_relative_path(self.data_frame.iloc[index].iloc[0]))
 
     def text(self, index: int) -> str:
-        return self.data_frame.iloc[index][1]
+        return self.data_frame.iloc[index].iloc[1]
 
     def image_iter(self) -> Iterable[SampleImage]:
         return iter(self.data_frame.iloc[:, 0])
@@ -79,9 +79,16 @@ class IAM_CSVDataSource(DataSource):
     def text_iter(self) -> Iterable[str]:
         return iter(self.data_frame.iloc[:, 1])
 
+    def index_filename(self, index: int) -> str:
+        return self.data_frame.iloc[index].iloc[0]
+
     def get_image_relative_path(self, name: str) -> str:
         name_split = name.split("-")
         return path.join(self.root_path, name_split[0], "-".join(name_split[:2]), name)
+
+    def get_image_dirname(self, name: str) -> str:
+        name_split = name.split("-")
+        return path.join(name_split[0], "-".join(name_split[:2]))
 
 class ParquetDataSource(DataSource):
     def __init__(self, file: str, map_columns: Optional[Dict[Literal["image", "text"], str]] = None) -> None:
@@ -119,10 +126,10 @@ class ParquetDataSource(DataSource):
         return self.data_frame.size
 
     def image(self, index: int) -> SampleImage:
-        return io.imread(BytesIO(self.data_frame.iloc[index][0]["bytes"]))
+        return io.imread(BytesIO(self.data_frame.iloc[index].iloc[0].iloc["bytes"]))
 
     def text(self, index: int) -> str:
-        return self.data_frame.iloc[index][1]
+        return self.data_frame.iloc[index].iloc[1]
 
     def image_iter(self) -> Iterable[SampleImage]:
         return iter(self.data_frame.iloc[:, 0])
