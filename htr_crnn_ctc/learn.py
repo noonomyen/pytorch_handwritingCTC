@@ -1,5 +1,4 @@
-from typing import Any, Optional
-# from typing import Union
+from typing import Any, Optional, Literal, Union
 
 import pickle
 
@@ -7,6 +6,7 @@ from skimage.color import rgb2gray
 from skimage.transform import rotate
 from skimage import io
 from torch import Tensor, nn, optim, device as Device
+from torch.utils.data import DataLoader
 # from torch.utils.data.sampler import SubsetRandomSampler, BatchSampler, Sampler
 from numpy.typing import NDArray
 from matplotlib import pyplot as plt
@@ -311,7 +311,7 @@ class Learner:
             for i in range(len(outs)):
                 start = sum(lens[:i])
                 end = lens[i].item()
-                corr = "".join([self.decode_map[letter.item()] for letter in yb[start:start+end]])
+                corr = "".join([self.decode_map[letter.item()] for letter in yb[start:start + end]])
                 pred = "".join([self.decode_map[letter] for letter in outs[i]])
 
                 if show_img:
@@ -329,11 +329,15 @@ class Learner:
                 if i + 1 == up_to:
                     break
 
-    def batch_predict(self, dataloader="valid", show_img=False, up_to=None):
-        if dataloader == "train" or dataloader == "both":
-            xb, yb, lens = next(iter(self.train_dl))
-            self._batch_predict(xb, yb, lens, "train", show_img, up_to)
+    def batch_predict(self, dataloader: Union[Literal["train", "valid", "both"], DataLoader] = "valid", show_img=False, up_to=None):
+        if isinstance(dataloader, DataLoader):
+            xb, yb, lens = next(iter(dataloader))
+            self._batch_predict(xb, yb, lens, "custom", show_img, up_to)
+        else:
+            if dataloader == "train" or dataloader == "both":
+                xb, yb, lens = next(iter(self.train_dl))
+                self._batch_predict(xb, yb, lens, "train", show_img, up_to)
 
-        if dataloader == "valid" or dataloader == "both":
-            xb, yb, lens = next(iter(self.valid_dl))
-            self._batch_predict(xb, yb, lens, "valid", show_img, up_to)
+            if dataloader == "valid" or dataloader == "both":
+                xb, yb, lens = next(iter(self.valid_dl))
+                self._batch_predict(xb, yb, lens, "valid", show_img, up_to)
