@@ -1,5 +1,6 @@
 torch
 torchvision
+numpy
 scikit-image
 matplotlib
 pandas
