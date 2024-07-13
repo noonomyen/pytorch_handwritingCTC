@@ -1,0 +1,3 @@
+[submodule "dependencies/DeslantImg"]
+	path = dependencies/DeslantImg
+	url = https://github.com/githubharald/DeslantImg
