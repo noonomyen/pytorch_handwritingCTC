@@ -126,7 +126,7 @@ class ParquetDataSource(DataSource):
         return self.data_frame.size
 
     def image(self, index: int) -> SampleImage:
-        return io.imread(BytesIO(self.data_frame.iloc[index].iloc[0].iloc["bytes"]))
+        return io.imread(BytesIO(self.data_frame.iloc[index].iloc[0]["bytes"]))
 
     def text(self, index: int) -> str:
         return self.data_frame.iloc[index].iloc[1]
