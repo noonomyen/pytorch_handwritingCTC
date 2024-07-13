@@ -64,4 +64,4 @@ ds = CTCDataset(
 - [Deslant Image - CSV IAM word dataset](./deslant-csv-iam.ipynb)
 - [Deslant Image - Parquet file to In-memory serialized](./deslant-parquet-to-in-memory.ipynb)
 - [Concat Dataset](./concat-dataset.ipynb)
-- [Line - In-memory](./train-line-in-memory.ipynb)
+- [Line - In-memory](./line-in-memory.ipynb)
