@@ -4,7 +4,7 @@ Short demo of a CTC handwriting model for words and line-level handwriting recog
 
 Source: [jc639/pytorch-handwritingCTC](https://github.com/jc639/pytorch-handwritingCTC)
 
-[Document](./README.old.md)
+[Original document](./README.old.md)
 
 ## Change list
 
@@ -58,3 +58,10 @@ ds = CTCDataset(
     ])
 )
 ```
+
+### Examples
+
+- [Deslant Image - CSV IAM word dataset](./deslant-csv-iam.ipynb)
+- [Deslant Image - Parquet file to In-memory serialized](./deslant-parquet-to-in-memory.ipynb)
+- [Concat Dataset](./concat-dataset.ipynb)
+- [Line - In-memory](./train-line-in-memory.ipynb)
