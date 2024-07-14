@@ -158,7 +158,7 @@ class Learner:
 
             # assert self.valid_dl.batch_sampler is not None and isinstance(self.valid_dl.batch_sampler, BatchSampler) and isinstance(self.valid_dl.batch_sampler.sampler, SubsetRandomSampler)
 
-            print("epoch {}: train loss {} | valid loss {} | CER {} | IER {}\nTRAIN LEVEN {} | VAL LEVEN {}".format(
+            _output = "epoch {}: train loss {} | valid loss {} | CER {} | IER {}\nTRAIN LEVEN {} | VAL LEVEN {}\n".format(
                 i,
                 train_loss / len(self.train_dl),
                 valid_loss / len(self.valid_dl),
@@ -166,7 +166,12 @@ class Learner:
                 wer / len(self.valid_dl.batch_sampler.sampler.indices), # type: ignore
                 train_leven / len_leven,
                 leven_dist / target_lengths
-            ), end="\n")
+            )
+
+            print(_output, end="")
+
+            with open("train.log", "a") as f:
+                f.write(_output.replace("\n", " ", 1))
 
             if (leven_dist / target_lengths) < self.best_leven:
                 self.save(leven=leven_dist / target_lengths)
