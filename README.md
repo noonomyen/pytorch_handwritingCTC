@@ -4,7 +4,7 @@ Short demo of a CTC handwriting model for words and line-level handwriting recog
 
 Source: [jc639/pytorch-handwritingCTC](https://github.com/jc639/pytorch-handwritingCTC)
 
-[Original document]([./README.old.md](https://github.com/jc639/pytorch-handwritingCTC/blob/master/README.md))
+[Original document](https://github.com/jc639/pytorch-handwritingCTC/blob/master/README.md)
 
 ## Change list
 
