@@ -1,4 +1,4 @@
-from typing import Any, Optional, Literal, Union
+from typing import Any, Optional, Literal, Union, Callable
 
 import pickle
 
@@ -27,6 +27,8 @@ __all__ = [
 class Learner:
     opt: Optional[optim.Adam]
     sched: Optional[optim.lr_scheduler.CyclicLR]
+    epoch_start: int
+    end_epoch_callback: Optional[Callable[[int], None]]
 
     def __init__(self, model: CTCModel, dataloader: CTCDataLoader, decode_map: DecodeMap,
                  save_path: Optional[str] = None,
@@ -43,8 +45,10 @@ class Learner:
         self.save_path = save_path
         self.decode_map = decode_map
         self.best_leven = 1000
+        self.epoch_start = 0
 
-    def fit_one_cycle(self, epochs, max_lr, base_lr=None, base_moms=0.8, max_moms=0.9, wd=1e-2):
+    def fit_one_cycle(self, epochs, max_lr, base_lr=None, base_moms=0.8, max_moms=0.9, wd=1e-2,
+                      end_epoch_callback: Optional[Callable[[int], None]] = None, epoch_start=0) -> None:
         if base_lr is None:
             base_lr = max_lr / 10
 
@@ -52,6 +56,8 @@ class Learner:
         up_size = np.floor(total_batches * 0.25)
         down_size = np.floor(total_batches * 0.95 - up_size)
 
+        self.end_epoch_callback = end_epoch_callback
+        self.epoch_start = epoch_start
         self.opt = self.optimiser(filter(lambda p: p.requires_grad, self.model.parameters()))
         self.opt.defaults["momentum"] = 0.9
         self.opt.param_groups[0]["momentum"] = 0.9
@@ -73,6 +79,7 @@ class Learner:
         )
 
         self._fit(epochs=epochs, cyclic=True)
+        self.epoch_start = 0
 
     def fit(self, epochs, lr=1e-3, wd=1e-2, betas=(0.9, 0.999)):
         self.opt = self.optimiser(
@@ -99,7 +106,7 @@ class Learner:
             for xb, yb, lens in self.train_dl:
                 self.model.train()
 
-                print("epoch {}: batch {} out of {} | loss {}".format(i, batch_n, len_train, loss), end="\r", flush=True)
+                print("epoch {}: batch {} out of {} | loss {}".format(i + self.epoch_start, batch_n, len_train, loss), end="\r", flush=True)
 
                 self.opt.zero_grad()
                 out: Tensor = self.model(xb)
@@ -159,7 +166,7 @@ class Learner:
             # assert self.valid_dl.batch_sampler is not None and isinstance(self.valid_dl.batch_sampler, BatchSampler) and isinstance(self.valid_dl.batch_sampler.sampler, SubsetRandomSampler)
 
             _output = "epoch {}: train loss {} | valid loss {} | CER {} | IER {}\nTRAIN LEVEN {} | VAL LEVEN {}\n".format(
-                i,
+                i + self.epoch_start,
                 train_loss / len(self.train_dl),
                 valid_loss / len(self.valid_dl),
                 cer / target_lengths,
@@ -176,6 +183,9 @@ class Learner:
             if (leven_dist / target_lengths) < self.best_leven:
                 self.save(leven=leven_dist / target_lengths)
                 self.best_leven = leven_dist / target_lengths
+
+            if self.end_epoch_callback:
+                self.end_epoch_callback(i)
 
     def find_lr(self, start_lr, end_lr, wd=1e-2, momentum=0.9, num_interval=200, plot=True):
         # https://sgugger.github.io/how-do-you-find-a-good-learning-rate.html

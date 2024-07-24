@@ -52,7 +52,6 @@ class CTCDataset(Dataset):
             self.char_dict = {char: idx for idx, char in enumerate(sorted(list(chars)), 1)}
         else:
             self.char_dict = char_dict
-            self.chars = set(self.char_dict.keys())
 
     def __getitem__(self, index: int) -> Sample:
         return self.transform(self.data_source[index]) if self.transform else self.data_source[index]

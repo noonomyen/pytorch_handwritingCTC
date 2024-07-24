@@ -1,20 +1,24 @@
+from random import shuffle
+
 from io import BytesIO
 from os import path
-from typing import Generator, Iterable, Optional, Literal, Dict, Any
+from typing import Generator, Iterable, Optional, Literal, Tuple, Dict, Any
 
 import pickle
 
 from pandas import read_parquet, read_csv
 from skimage import io
 
-from htr_crnn_ctc.utils import copy_sample
+from htr_crnn_ctc.utils import copy_sample, simulate_english_line_from_word
 from htr_crnn_ctc.types import Sample, SampleImage
 
 __all__ = [
     "DataSource",
     "IAM_CSVDataSource",
     "ParquetDataSource",
-    "InMemoryDataSource"
+    "InMemoryDataSource",
+    "HotSwapDataSource",
+    "SimulateLineDataSource"
 ]
 
 class DataSource:
@@ -176,3 +180,94 @@ class InMemoryDataSource(DataSource):
     def dump(self) -> None:
         with open(self.file_path, "wb") as file:
             pickle.dump(self.data, file=file, protocol=pickle.HIGHEST_PROTOCOL)
+
+class SimulateLineDataSource(DataSource):
+    def __init__(self, datasource: DataSource, words: Tuple[int, int], word_separate_size: Tuple[int, int], onetime = False) -> None:
+        self.onetime = onetime
+        self.data: list[Sample] = []
+
+        le = len(datasource)
+        li = [x for x in range(le)]
+        i = 0
+        c = 0
+        shuffle(li)
+        while i < le:
+            for j in range(words[0], words[1] + 1):
+                b = False
+                data = []
+                for _ in range(j):
+                    if i < le:
+                        data.append(datasource[li[i]])
+                        i += 1
+                    else:
+                        b = True
+                        break
+
+                if len(data) != 0:
+                    _ = simulate_english_line_from_word(data, word_separate_size)
+                    _.index = c
+                    self.data.append(_)
+                    c += 1
+
+                if b:
+                    break
+
+            print(f"\r{i}/{le}", end="")
+
+        print()
+
+    def __getitem__(self, index: int) -> Sample:
+        return self.data[index] if self.onetime else copy_sample(self.data[index])
+
+    def __setitem__(self, index: int, value: Sample) -> None:
+        raise NotImplementedError("")
+
+    def __iter__(self):
+        return iter(self.data)
+
+    def __len__(self) -> int:
+        return self.data.__len__()
+
+    def image(self, index: int) -> SampleImage:
+        return self.data[index].image
+
+    def text(self, index: int) -> str:
+        return self.data[index].text
+
+    def image_iter(self) -> Iterable[SampleImage]:
+        return (obj.image for obj in self.data)
+
+    def text_iter(self) -> Iterable[str]:
+        return (obj.text for obj in self.data)
+
+class HotSwapDataSource(DataSource):
+    def __init__(self, datasource: DataSource) -> None:
+        super().__init__()
+        self.datasource = datasource
+
+    def __getitem__(self, index: int) -> Sample:
+        return self.datasource.__getitem__(index)
+
+    def __setitem__(self, index: int, value: Sample) -> None:
+        return self.datasource.__setitem__(index, value)
+
+    def __iter__(self):
+        return self.datasource.__iter__()
+
+    def __len__(self) -> int:
+        return self.datasource.__len__()
+
+    def image(self, index: int) -> SampleImage:
+        return self.datasource.image(index)
+
+    def text(self, index: int) -> str:
+        return self.datasource.text(index)
+
+    def image_iter(self) -> Iterable[SampleImage]:
+        return self.datasource.image_iter()
+
+    def text_iter(self) -> Iterable[str]:
+        return self.datasource.text_iter()
+
+    def swap(self, datasource: DataSource) -> None:
+        self.datasource = datasource
