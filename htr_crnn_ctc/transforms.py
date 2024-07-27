@@ -13,6 +13,7 @@ __all__ = [
     "Rescale",
     "Deslant",
     "ToRGB",
+    "ToGray",
     "ToTensor",
     "Normalise"
 ]
@@ -105,6 +106,12 @@ class Deslant:
 class ToRGB:
     def __call__(self, sample: Sample) -> Sample:
         sample.image = color.gray2rgb(sample.image)
+
+        return sample
+
+class ToGray:
+    def __call__(self, sample: Sample) -> Sample:
+        sample.image = color.rgb2gray(sample.image)
 
         return sample
 
