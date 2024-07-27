@@ -90,7 +90,8 @@ class IAM_CSVDataSource(DataSource):
         name_split = name.split("-")
         return path.join(self.root_path, name_split[0], "-".join(name_split[:2]), name)
 
-    def get_image_dirname(self, name: str) -> str:
+    @staticmethod
+    def get_image_dirname(name: str) -> str:
         name_split = name.split("-")
         return path.join(name_split[0], "-".join(name_split[:2]))
 
