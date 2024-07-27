@@ -1,4 +1,4 @@
-from typing import Literal, Optional, Tuple, Dict, Any
+from typing import Literal, Optional, Tuple, Dict, Any, Union
 
 from skimage import transform, color
 from torchvision.transforms import Normalize as TorchNormalize
@@ -15,7 +15,8 @@ __all__ = [
     "ToRGB",
     "ToGray",
     "ToTensor",
-    "Normalise"
+    "Normalise",
+    "ConvertToUint8"
 ]
 
 class Rescale(object):
@@ -138,4 +139,18 @@ class Normalise:
 
     def __call__(self, sample: Sample) -> Sample:
         sample.image = self.norm(sample.image)
+        return sample
+
+class ConvertToUint8:
+    def __init__(self, scale_max: Optional[Union[int, float]] = None) -> None:
+        self.div = 255.0 / scale_max if scale_max is not None else 1
+
+    def __call__(self, sample: Sample) -> Sample:
+        assert isinstance(sample.image, np.ndarray)
+
+        sample.image = sample.image.astype(np.float64)
+        sample.image = np.clip(sample.image * self.div if self.div != 1 else sample.image, 0, 255)
+
+        sample.image = sample.image.astype(np.uint8)
+
         return sample
