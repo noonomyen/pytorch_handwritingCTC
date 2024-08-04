@@ -30,7 +30,7 @@ class Learner:
     epoch_start: int
     end_epoch_callback: Optional[Callable[[int], None]]
 
-    def __init__(self, model: CTCModel, dataloader: CTCDataLoader, decode_map: DecodeMap,
+    def __init__(self, model: CTCModel, dataloader: CTCDataLoader, decode_map: Optional[DecodeMap],
                  save_path: Optional[str] = None,
                  loss_func=nn.CTCLoss(reduction="sum", zero_infinity=True),
                  optimiser=optim.Adam,
@@ -43,7 +43,7 @@ class Learner:
         self.scheduler = scheduler
         self.sched = None
         self.save_path = save_path
-        self.decode_map = decode_map
+        self.decode_map = decode_map if decode_map else {}
         self.best_leven = 1000
         self.epoch_start = 0
 
