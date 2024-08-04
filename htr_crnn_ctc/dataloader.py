@@ -1,4 +1,5 @@
-from typing import Tuple, Union
+from datetime import datetime
+from typing import Tuple, Union, Optional, Literal, Dict
 
 from torch import Tensor, device as Device
 from torch.utils.data import DataLoader
@@ -15,9 +16,13 @@ __all__ = [
 ]
 
 class CTCDataLoader:
-    def __init__(self, dataset: Union[CTCDataset, CTCConcatDataset], train_batch_size=16, validation_batch_size=16,
-                 validation_split=0.2, shuffle=True, seed=42, device=Device("cpu")) -> None:
+    def __init__(self, dataset: Union[CTCDataset, CTCConcatDataset],
+                 dataset_index_splited: Optional[Dict[Literal["train", "val"], str]] = None,
+                 train_batch_size=16, validation_batch_size=16,
+                 validation_split=0.2, shuffle=True, seed=42, device=Device("cpu"),
+                 export_split_list=True) -> None:
         assert isinstance(dataset, (CTCDataset, CTCConcatDataset))
+        assert dataset_index_splited is None or (type(dataset_index_splited) is dict and "train" in dataset_index_splited and "val" in dataset_index_splited)
         assert isinstance(train_batch_size, int)
         assert isinstance(validation_batch_size, int)
         assert isinstance(validation_split, float)
@@ -26,23 +31,37 @@ class CTCDataLoader:
         assert isinstance(device, Device)
 
         self.dataset = dataset
+        self.dataset_index_splited = dataset_index_splited
         self.train_batch_size = train_batch_size
         self.validation_batch_size = validation_batch_size
         self.validation_split = validation_split
         self.shuffle = shuffle
         self.seed = seed
         self.device = device
+        self.export_split_list = export_split_list
 
     def  __call__(self) -> tuple[DataLoader, DataLoader]:
-        dataset_size = len(self.dataset)
-        indices = list(range(dataset_size))
-        split = int(np.floor(self.validation_split * dataset_size))
+        if self.dataset_index_splited:
+            with open(self.dataset_index_splited["train"], "r") as f:
+                train_indices = [int(x) for x in f.read().strip().split(",")]
+            with open(self.dataset_index_splited["val"], "r") as f:
+                val_indices = [int(x) for x in f.read().strip().split(",")]
+        else:
+            dataset_size = len(self.dataset)
+            indices = list(range(dataset_size))
+            split = int(np.floor(self.validation_split * dataset_size))
 
-        if self.shuffle:
-            np.random.seed(self.seed)
-            np.random.shuffle(indices)
+            if self.shuffle:
+                np.random.seed(self.seed)
+                np.random.shuffle(indices)
 
-        train_indices, val_indices = indices[split:], indices[:split]
+            train_indices, val_indices = indices[split:], indices[:split]
+
+            if self.export_split_list:
+                with open(f"dl-train-list.{int(datetime.now().timestamp())}.txt", "w") as f:
+                    f.write(",".join([str(x) for x in train_indices]))
+                with open(f"dl-val-list.{int(datetime.now().timestamp())}.txt", "w") as f:
+                    f.write(",".join([str(x) for x in val_indices]))
 
         train_sampler = SubsetRandomSampler(train_indices)
         valid_sampler = SubsetRandomSampler(val_indices)
