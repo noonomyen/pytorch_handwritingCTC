@@ -66,3 +66,5 @@ ds = CTCDataset(
 - [Concat Dataset](./concat-dataset.ipynb)
 - [Line - In-memory](./line-in-memory.ipynb)
 - [Train log summary](./train-log-summary.ipynb)
+- [Dataset (width, height) and model summary](./dataset-model-summary.ipynb)
+- [Model summary](./model-summary.ipynb)
