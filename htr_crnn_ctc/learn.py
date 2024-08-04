@@ -51,7 +51,7 @@ class Learner:
 
     def fit_one_cycle(self, epochs, max_lr, base_lr=None, base_moms=0.8, max_moms=0.9, wd=1e-2,
                       end_epoch_callback: Optional[Callable[[int], None]] = None, epoch_start=0) -> None:
-        self.fit_start_time = str(datetime.now().timestamp())
+        self.fit_start_time = str(int(datetime.now().timestamp()))
 
         if base_lr is None:
             base_lr = max_lr / 10
@@ -86,7 +86,7 @@ class Learner:
         self.epoch_start = 0
 
     def fit(self, epochs, lr=1e-3, wd=1e-2, betas=(0.9, 0.999)):
-        self.fit_start_time = str(datetime.now().timestamp())
+        self.fit_start_time = str(int(datetime.now().timestamp()))
 
         self.opt = self.optimiser(
             filter(lambda p: p.requires_grad, self.model.parameters()),
